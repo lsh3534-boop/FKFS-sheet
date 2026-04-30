@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FKFS 실도로 평가 | Road Evaluation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #f5f6fa;
+            color: #2c3e50;
+            line-height: 1.6;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 100%;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        /* ===== 헤더 ===== */
+        .header {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            color: white;
+            padding: 25px 15px;
+            text-align: center;
+            border-bottom: 4px solid #0ea5e9;
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 0.95em;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        /* ===== 탭 네비게이션 ===== */
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-tabs button {
+            flex: 1;
+            padding: 15px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .nav-tabs button.active {
+            color: #1e40af;
+            border-bottom-color: #0ea5e9;
+        }
+
+        .nav-tabs button:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        /* ===== 콘텐츠 ===== */
+        .content {
+            padding: 15px;
+        }
+
+        .section-view {
+            display: none;
+        }
+
+        .section-view.active {
+            display: block;
+        }
+
+        /* ===== 소음 인지 버튼 ===== */
+        .quick-detect {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        .record-btn {
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .record-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* ===== 평가 프로세스 섹션 ===== */
+        .evaluation-process {
+            display: none;
+            background: linear-gradient(135deg, #dbeafe 0%, #e0f2fe 100%);
+            border: 2px solid #0284c7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            animation: slideDown 0.3s ease;
+        }
+
+        .evaluation-process.active {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .process-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #0284c7;
+        }
+
+        .process-number {
+            background-color: #0ea5e9;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.5em;
+        }
+
+        .process-info h2 {
+            font-size: 1.3em;
+            color: #1e40af;
+            margin-bottom: 5px;
+        }
+
+        .process-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9em;
+            color: #64748b;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .meta-label {
+            font-weight: 600;
+        }
+
+        .meta-value {
+            color: #1e40af;
+            font-weight: 700;
+        }
+
+        /* ===== 섹션 스타일 ===== */
+        .section {
+            margin-bottom: 20px;
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ecf0f1;
+        }
+
+        .section.hidden {
+            display: none;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            color: #2c3e50;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #0ea5e9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-number {
+            background-color: #0ea5e9;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+
+        .section-icon {
+            font-size: 1.5em;
+        }
+
+        .section-label {
+            flex: 1;
+        }
+
+        /* ===== 버튼 그룹 ===== */
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .option-btn {
+            padding: 12px 10px;
+            border: 2px solid #bdc3c7;
+            background-color: #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .option-btn:active {
+            transform: scale(0.95);
+        }
+
+        .option-btn.selected {
+            background-color: #0ea5e9;
+            color: white;
+            border-color: #0284c7;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        /* ===== 멀티 선택 버튼 ===== */
+        .multi-button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .multi-btn {
+            padding: 10px 8px;
+            border: 2px solid #bdc3c7;
+            background-color: #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .multi-btn:active {
+            transform: scale(0.95);
+        }
+
+        .multi-btn.selected {
+            background-color: #0ea5e9;
+            color: white;
+            border-color: #0284c7;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        /* ===== 5단계 평가 버튼 ===== */
+        .rating-group {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .rating-btn {
+            padding: 12px 8px;
+            border: 2px solid #bdc3c7;
+            background-color: #ffffff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1.1em;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .rating-btn:active {
+            transform: scale(0.95);
+        }
+
+        .rating-btn.selected {
+            background-color: #0ea5e9;
+            color: white;
+            border-color: #0284c7;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        .rating-label {
+            font-size: 0.65em;
+            color: #95a5a6;
+            margin-top: 3px;
+        }
+
+        /* ===== 평가 카드 ===== */
+        .evaluation-item {
+            background: linear-gradient(135deg, #f8f9fb 0%, #ecf0f1 100%);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0ea5e9;
+        }
+
+        .evaluation-title {
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 1em;
+        }
+
+        .evaluation-subtitle {
+            font-size: 0.75em;
+            color: #95a5a6;
+            margin-top: 2px;
+        }
+
+        .evaluation-comment {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #bdc3c7;
+        }
+
+        .comment-label {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #7f8c8d;
+            margin-bottom: 6px;
+        }
+
+        .comment-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .comment-input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+        }
+
+        /* ===== 데이터 그리드 ===== */
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .data-card {
+            background: #ecf0f1;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #bdc3c7;
+        }
+
+        .data-label {
+            font-size: 0.75em;
+            color: #7f8c8d;
+            font-weight: 600;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .data-input {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 0.95em;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .data-input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            background-color: #f8fbff;
+        }
+
+        /* ===== 변동성 심한 파라메터 선택 버튼 ===== */
+        .volatile-param-btn {
+            padding: 12px 8px;
+            border: 2px solid #bdc3c7;
+            background-color: #ffffff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.95em;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .volatile-param-btn:active {
+            transform: scale(0.95);
+        }
+
+        .volatile-param-btn.selected {
+            background-color: #0ea5e9;
+            color: white;
+            border-color: #0284c7;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        .volatile-params-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        /* ===== 감지 기록 카드 ===== */
+        .detection-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fb 100%);
+            border: 2px solid #ecf0f1;
+            border-left: 5px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            display: block;
+            animation: slideInUp 0.3s ease;
+            position: relative;
+        }
+
+        .detection-card.active {
+            display: block;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .detection-id {
+            display: inline-block;
+            background-color: #0ea5e9;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-weight: bold;
+            padding: 0;
+        }
+
+        .delete-btn:hover {
+            background: #ff5252;
+            transform: scale(1.1);
+        }
+
+        .delete-btn:active {
+            transform: scale(0.95);
+        }
+
+        .detection-meta {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .detection-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+            color: #0ea5e9;
+            font-weight: 600;
+        }
+
+        /* ===== 정보 박스 ===== */
+        .info-box {
+            background: linear-gradient(135deg, #e0f2fe 0%, #ecf0f1 100%);
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #0ea5e9;
+            margin: 12px 0;
+            font-size: 0.9em;
+            color: #34495e;
+        }
+
+        .info-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ===== 대시보드 스타일 ===== */
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card.secondary {
+            background: linear-gradient(135deg, #0284c7 0%, #016ba8 100%);
+        }
+
+        .stat-card.danger {
+            background: linear-gradient(135deg, #0b7db8 0%, #064b7f 100%);
+        }
+
+        .stat-card h3 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        /* ===== 종합 분석 섹션 ===== */
+        .summary-section {
+            background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+            border: 2px solid #0284c7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .summary-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #0ea5e9;
+            padding-bottom: 10px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-item {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #0ea5e9;
+        }
+
+        .summary-label {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .summary-value {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #1e40af;
+        }
+
+        .summary-desc {
+            font-size: 0.8em;
+            color: #95a5a6;
+            margin-top: 5px;
+        }
+
+        /* ===== 평가 기록 리스트 ===== */
+        .evaluation-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #7f8c8d;
+        }
+
+        .empty-state p {
+            font-size: 0.95em;
+            margin: 10px 0;
+        }
+
+        /* ===== 하단 버튼 ===== */
+        .bottom-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #0284c7 0%, #016ba8 100%);
+            color: white;
+        }
+
+        .btn-success:active {
+            transform: scale(0.95);
+        }
+
+        .btn-secondary {
+            background-color: #bdc3c7;
+            color: #2c3e50;
+        }
+
+        .btn-secondary:active {
+            transform: scale(0.95);
+        }
+
+        /* ===== 상태 표시 ===== */
+        .status-display {
+            font-size: 0.9em;
+            color: #95a5a6;
+            margin-top: 10px;
+            padding: 8px;
+            background-color: #f8f9fb;
+            border-radius: 6px;
+            border-left: 3px solid #0ea5e9;
+        }
+
+        /* ===== 소음 인지 큰 박스 ===== */
+        .noise-detection-box {
+            background: #e0f2fe;
+            border: 2px solid #0284c7;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            color: #1e40af;
+            font-weight: 600;
+        }
+
+        /* ===== 주변 차량 수 버튼 ===== */
+        .vehicle-count-group {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .vehicle-count-btn {
+            padding: 12px 8px;
+            border: 2px solid #bdc3c7;
+            background-color: #ffffff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1em;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .vehicle-count-btn:active {
+            transform: scale(0.95);
+        }
+
+        .vehicle-count-btn.selected {
+            background-color: #0ea5e9;
+            color: white;
+            border-color: #0284c7;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        /* ===== 환경 데이터 그리드 (대시보드용) ===== */
+        .env-data-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .env-data-item {
+            background: white;
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #0ea5e9;
+            text-align: center;
+        }
+
+        .env-data-label {
+            font-size: 0.7em;
+            color: #95a5a6;
+            font-weight: 600;
+        }
+
+        .env-data-value {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-top: 3px;
+        }
+
+        /* ===== 반응형 ===== */
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .section-title {
+                font-size: 1.15em;
+            }
+
+            .button-group {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .data-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .process-meta {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .detection-meta {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .bottom-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .vehicle-count-group {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .env-data-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .volatile-params-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 -->
+        <div class="header">
+            <h1>🎙️ FKFS 실도로 평가 시스템</h1>
+            <p>차량 소음 실시간 평가 & 데이터 관리</p>
+        </div>
+
+        <!-- 탭 네비게이션 -->
+        <div class="nav-tabs">
+            <button class="nav-btn active" onclick="switchTab(event, 'evaluation')">📝 평가 입력</button>
+            <button class="nav-btn" onclick="switchTab(event, 'dashboard')">📊 결과 대시보드</button>
+        </div>
+
+        <div class="content">
+            <!-- ===== 평가 입력 탭 ===== -->
+            <div id="evaluation" class="section-view active">
+
+                <!-- ===== 소음 인지 버튼 ===== -->
+                <div class="quick-detect">
+                    <button class="record-btn" onclick="startEvaluation()" id="detect-btn">
+                        🔊 소음 인지
+                    </button>
+                </div>
+
+                <!-- ===== 소음 인지 후 박스 ===== -->
+                <div id="noise-box" class="noise-detection-box" style="display: none;">
+                    🔊 소음 인지
+                </div>
+
+                <!-- ===== 평가 프로세스 헤더 ===== -->
+                <div class="evaluation-process" id="process-header">
+                    <div class="process-header">
+                        <div class="process-number" id="process-number">1</div>
+                        <div class="process-info">
+                            <h2 id="process-title">평가자 선택</h2>
+                            <div class="process-meta">
+                                <div class="meta-item">
+                                    <span class="meta-label">📅 날짜:</span>
+                                    <span class="meta-value" id="process-date">-</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">🕐 시간:</span>
+                                    <span class="meta-value" id="process-time">-</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">👤 평가자:</span>
+                                    <span class="meta-value" id="process-evaluator">선택 필요</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 1. 평가자 선택 ===== -->
+                <div class="section" id="section-1">
+                    <div class="section-title">
+                        <div class="section-number">1</div>
+                        <span class="section-icon">👤</span>
+                        <div class="section-label">평가자 선택</div>
+                    </div>
+                    <div class="button-group" id="evaluator-group">
+                        <button class="option-btn" onclick="selectEvaluator(this, '장대한')">장대한</button>
+                        <button class="option-btn" onclick="selectEvaluator(this, '윤일주')">윤일주</button>
+                        <button class="option-btn" onclick="selectEvaluator(this, '이성화')">이성화</button>
+                    </div>
+                    <div class="status-display" id="evaluator-status">선택: 없음</div>
+                </div>
+
+                <!-- ===== 2. 주행 시나리오 ===== -->
+                <div class="section" id="section-2">
+                    <div class="section-title">
+                        <div class="section-number">2</div>
+                        <span class="section-icon">🛣️</span>
+                        <div class="section-label">주행 시나리오</div>
+                    </div>
+                    <div class="button-group" id="scenario-group">
+                        <button class="option-btn" onclick="selectScenario(this, 'Highway')">Highway</button>
+                        <button class="option-btn" onclick="selectScenario(this, 'Freeway')">Freeway</button>
+                        <button class="option-btn" onclick="selectScenario(this, 'Bridge')">Bridge</button>
+                        <button class="option-btn" onclick="selectScenario(this, 'Tunnel')">Tunnel</button>
+                    </div>
+                    <div class="status-display" id="scenario-status">선택: 없음</div>
+                </div>
+
+                <!-- ===== 3. 주행 환경 (중복선택) ===== -->
+                <div class="section" id="section-3">
+                    <div class="section-title">
+                        <div class="section-number">3</div>
+                        <span class="section-icon">🛣️</span>
+                        <div class="section-label">주행 환경 (중복선택)</div>
+                    </div>
+                    <div class="multi-button-group" id="driving-group">
+                        <button class="multi-btn" onclick="toggleDriving(this, '추월')">추월</button>
+                        <button class="multi-btn" onclick="toggleDriving(this, '가드레일(L)')">가드레일(L)</button>
+                        <button class="multi-btn" onclick="toggleDriving(this, '가드레일(R)')">가드레일(R)</button>
+                        <button class="multi-btn" onclick="toggleDriving(this, '트럭')">트럭</button>
+                        <button class="multi-btn" onclick="toggleDriving(this, '1차선')">1차선</button>
+                        <button class="multi-btn" onclick="toggleDriving(this, '2차선')">2차선</button>
+                        <button class="multi-btn" onclick="toggleDriving(this, '3차선')">3차선</button>
+                        <button class="multi-btn" onclick="toggleDriving(this, '4차선')">4차선</button>
+                    </div>
+                    <div class="status-display" id="driving-status">선택: 없음</div>
+
+                    <div class="evaluation-comment">
+                        <div class="comment-label">📝 주행 환경 코멘트</div>
+                        <textarea class="comment-input" id="driving-comment" placeholder="주행 환경에 대한 의견을 입력하세요..."></textarea>
+                    </div>
+
+                    <!-- ===== 주변 차량 수 ===== -->
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #ecf0f1;">
+                        <div style="font-size: 1em; font-weight: 700; color: #2c3e50; margin-bottom: 12px;">🚗 주변 차량 수</div>
+                        <div class="vehicle-count-group">
+                            <button class="vehicle-count-btn" onclick="selectVehicleCount(this, 1)">없음</button>
+                            <button class="vehicle-count-btn" onclick="selectVehicleCount(this, 2)">적음</button>
+                            <button class="vehicle-count-btn" onclick="selectVehicleCount(this, 3)">보통</button>
+                            <button class="vehicle-count-btn" onclick="selectVehicleCount(this, 4)">많음</button>
+                            <button class="vehicle-count-btn" onclick="selectVehicleCount(this, 5)">매우 많음</button>
+                        </div>
+                        <div class="status-display" id="vehicle-count-status">선택: 없음</div>
+                    </div>
+                </div>
+
+                <!-- ===== 4. 소음 평가 ===== -->
+                <div class="section" id="section-4">
+                    <div class="section-title">
+                        <div class="section-number">4</div>
+                        <span class="section-icon">👥</span>
+                        <div class="section-label">소음 평가</div>
+                    </div>
+
+                    <!-- 음량 -->
+                    <div class="evaluation-item">
+                        <div class="evaluation-title">
+                            🔊 음량 (Loudness)
+                            <div class="evaluation-subtitle">작음 ← → 큼</div>
+                        </div>
+                        <div class="rating-group">
+                            <button class="rating-btn" onclick="selectRating(this, 'loudness', 1)">1</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'loudness', 2)">2</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'loudness', 3)">3</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'loudness', 4)">4</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'loudness', 5)">5</button>
+                        </div>
+                        <div class="evaluation-comment">
+                            <div class="comment-label">💬 음량 코멘트</div>
+                            <textarea class="comment-input" id="loudness-comment" placeholder="음량에 대한 평가를 입력하세요..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 음색 -->
+                    <div class="evaluation-item">
+                        <div class="evaluation-title">
+                            🎵 음색 (Timbre)
+                            <div class="evaluation-subtitle">부드러움 ← → 거칠음</div>
+                        </div>
+                        <div class="rating-group">
+                            <button class="rating-btn" onclick="selectRating(this, 'timbre', 1)">1</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'timbre', 2)">2</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'timbre', 3)">3</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'timbre', 4)">4</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'timbre', 5)">5</button>
+                        </div>
+                        <div class="evaluation-comment">
+                            <div class="comment-label">💬 음색 코멘트</div>
+                            <textarea class="comment-input" id="timbre-comment" placeholder="음색에 대한 평가를 입력하세요..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 변동성 -->
+                    <div class="evaluation-item">
+                        <div class="evaluation-title">
+                            📊 변동성 (Fluctuation)
+                            <div class="evaluation-subtitle">일정함 ← → 변함</div>
+                        </div>
+                        <div class="rating-group">
+                            <button class="rating-btn" onclick="selectRating(this, 'fluctuation', 1)">1</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'fluctuation', 2)">2</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'fluctuation', 3)">3</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'fluctuation', 4)">4</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'fluctuation', 5)">5</button>
+                        </div>
+                        <div class="evaluation-comment">
+                            <div class="comment-label">💬 변동성 코멘트</div>
+                            <textarea class="comment-input" id="fluctuation-comment" placeholder="변동성에 대한 평가를 입력하세요..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 성가심 -->
+                    <div class="evaluation-item">
+                        <div class="evaluation-title">
+                            😤 성가심 (Annoyance)
+                            <div class="evaluation-subtitle">낮음 ← → 높음</div>
+                        </div>
+                        <div class="rating-group">
+                            <button class="rating-btn" onclick="selectRating(this, 'annoyance', 1)">1</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'annoyance', 2)">2</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'annoyance', 3)">3</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'annoyance', 4)">4</button>
+                            <button class="rating-btn" onclick="selectRating(this, 'annoyance', 5)">5</button>
+                        </div>
+                        <div class="evaluation-comment">
+                            <div class="comment-label">💬 성가심 코멘트</div>
+                            <textarea class="comment-input" id="annoyance-comment" placeholder="성가심에 대한 평가를 입력하세요..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 5. 감지시점 환경 데이터 ===== -->
+                <div class="section" id="section-5">
+                    <div class="section-title">
+                        <div class="section-number">5</div>
+                        <span class="section-icon">🌡️</span>
+                        <div class="section-label">감지시점 환경 데이터</div>
+                    </div>
+
+                    <div class="data-grid">
+                        <div class="data-card">
+                            <div class="data-label">🌬️ 풍속</div>
+                            <input type="number" class="data-input" id="wind-speed" value="4.2" step="0.1" placeholder="m/s">
+                        </div>
+                        <div class="data-card">
+                            <div class="data-label">🧭 풍향</div>
+                            <input type="number" class="data-input" id="wind-direction" value="45" step="1" placeholder="°">
+                        </div>
+                        <div class="data-card">
+                            <div class="data-label">📐 측후각</div>
+                            <input type="number" class="data-input" id="yaw-angle" value="90" step="1" placeholder="°">
+                        </div>
+                        <div class="data-card">
+                            <div class="data-label">🌡️ 기온</div>
+                            <input type="number" class="data-input" id="temp" value="22" step="0.1" placeholder="°C">
+                        </div>
+                        <div class="data-card">
+                            <div class="data-label">💧 습도</div>
+                            <input type="number" class="data-input" id="humidity" value="55" step="1" placeholder="%">
+                        </div>
+                        <div class="data-card">
+                            <div class="data-label">🔽 압력</div>
+                            <input type="number" class="data-input" id="pressure" value="1013" step="0.1" placeholder="hPa">
+                        </div>
+                    </div>
+
+                    <!-- ===== 변동성 심한 파라메터 선택 (최대 3개) ===== -->
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #ecf0f1;">
+                        <div style="font-size: 1em; font-weight: 700; color: #2c3e50; margin-bottom: 12px;">⚡ 변동성 심한 파라메터 (최대 3개 선택)</div>
+                        <div class="volatile-params-grid">
+                            <button class="volatile-param-btn" onclick="toggleVolatileParam(this, '풍속')">🌬️ 풍속</button>
+                            <button class="volatile-param-btn" onclick="toggleVolatileParam(this, '풍향')">🧭 풍향</button>
+                            <button class="volatile-param-btn" onclick="toggleVolatileParam(this, '측후각')">📐 측후각</button>
+                            <button class="volatile-param-btn" onclick="toggleVolatileParam(this, '기온')">🌡️ 기온</button>
+                            <button class="volatile-param-btn" onclick="toggleVolatileParam(this, '습도')">💧 습도</button>
+                            <button class="volatile-param-btn" onclick="toggleVolatileParam(this, '압력')">🔽 압력</button>
+                        </div>
+                        <div class="status-display" id="volatile-params-status">선택: 없음</div>
+                    </div>
+
+                    <div class="evaluation-comment">
+                        <div class="comment-label">📝 환경 데이터 코멘트</div>
+                        <textarea class="comment-input" id="env-comment" placeholder="환경 조건에 대한 의견을 입력하세요..."></textarea>
+                    </div>
+                </div>
+
+                <!-- ===== 6. 차량 좌석 위치 ===== -->
+                <div class="section" id="section-6">
+                    <div class="section-title">
+                        <div class="section-number">6</div>
+                        <span class="section-icon">🪑</span>
+                        <div class="section-label">차량 좌석 위치</div>
+                    </div>
+                    <div class="button-group" id="seat-group">
+                        <button class="option-btn" onclick="selectSeat(this, '운전석')">운전석</button>
+                        <button class="option-btn" onclick="selectSeat(this, '조수석')">조수석</button>
+                        <button class="option-btn" onclick="selectSeat(this, '뒷좌(L)')">뒷좌(L)</button>
+                        <button class="option-btn" onclick="selectSeat(this, '뒷좌(C)')">뒷좌(C)</button>
+                        <button class="option-btn" onclick="selectSeat(this, '뒷좌(R)')">뒷좌(R)</button>
+                    </div>
+                    <div class="status-display" id="seat-status">선택: 없음</div>
+
+                    <div class="evaluation-comment">
+                        <div class="comment-label">📝 좌석 위치 코멘트</div>
+                        <textarea class="comment-input" id="seat-comment" placeholder="좌석 위치별 특성을 입력하세요..."></textarea>
+                    </div>
+                </div>
+
+                <!-- ===== 7. 소음 발생 위치 ===== -->
+                <div class="section" id="section-7">
+                    <div class="section-title">
+                        <div class="section-number">7</div>
+                        <span class="section-icon">📍</span>
+                        <div class="section-label">소음 발생 위치 (중복선택)</div>
+                    </div>
+                    <div class="multi-button-group" id="location-group">
+                        <button class="multi-btn" onclick="toggleLocation(this, '윈드쉴드')">윈드쉴드</button>
+                        <button class="multi-btn" onclick="toggleLocation(this, '사이드미러')">사이드미러</button>
+                        <button class="multi-btn" onclick="toggleLocation(this, '도어글라스')">도어글라스</button>
+                        <button class="multi-btn" onclick="toggleLocation(this, 'A필러')">A필러</button>
+                        <button class="multi-btn" onclick="toggleLocation(this, 'B필러')">B필러</button>
+                        <button class="multi-btn" onclick="toggleLocation(this, '전체 차실')">전체 차실</button>
+                    </div>
+                    <div class="status-display" id="location-status">선택: 없음</div>
+
+                    <div class="evaluation-comment">
+                        <div class="comment-label">📝 소음 위치 코멘트</div>
+                        <textarea class="comment-input" id="location-comment" placeholder="소음이 발생하는 위치의 특성을 입력하세요..."></textarea>
+                    </div>
+                </div>
+
+                <!-- 하단 버튼 -->
+                <div class="bottom-buttons">
+                    <button class="btn btn-primary" onclick="window.print()">🖨️ 인쇄</button>
+                    <button class="btn btn-success" onclick="saveEvaluation()">💾 저장</button>
+                    <button class="btn btn-secondary" onclick="resetForm()">🔄 초기화</button>
+                </div>
+
+            </div>
+
+            <!-- ===== 결과 대시보드 탭 ===== -->
+            <div id="dashboard" class="section-view">
+                <div class="dashboard-stats" id="stats"></div>
+
+                <!-- 종합 분석 섹션 -->
+                <div id="summary-section" class="summary-section" style="display: none;">
+                    <div class="summary-title">📊 종합 평가 분석</div>
+                    <div class="summary-grid" id="summary-grid"></div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="exportJSON()">📥 JSON 다운로드</button>
+                    <button class="btn btn-primary" style="flex: 1;" onclick="exportCSV()">📊 CSV 다운로드</button>
+                </div>
+
+                <div id="evaluationsList" class="evaluation-list"></div>
+                <div id="emptyState" class="empty-state">
+                    <p>📭 아직 저장된 평가가 없습니다</p>
+                    <p style="font-size: 0.9em;">평가 입력 탭에서 새로운 평가를 시작하세요</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Google Apps Script 웹앱 URL 설정
+        // 아래 URL을 본인이 배포한 Apps Script 웹 앱 URL(/exec로 끝나는 주소)로 교체
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDKoP5HvWK9Njq2OkSJb8CXGsIAVJfY53FJUt0FaYgFOcMSWyPbc3hj77yJJ194mP_/exec";
+
+        let allDetections = [];
+        let currentDetection = {
+            name: null,
+            date: null,
+            time: null,
+            scenario: null,
+            drivings: [],
+            vehicleCount: null,
+            drivingComment: '',
+            loudness: null,
+            loudnessComment: '',
+            timbre: null,
+            timbreComment: '',
+            fluctuation: null,
+            fluctuationComment: '',
+            annoyance: null,
+            annoyanceComment: '',
+            windSpeed: null,
+            windDirection: null,
+            yawAngle: null,
+            temp: null,
+            humidity: null,
+            pressure: null,
+            volatileParams: [],
+            envComment: '',
+            seat: null,
+            seatComment: '',
+            locations: [],
+            locationComment: ''
+        };
+
+        // 페이지 로드 시 데이터 로드
+        window.addEventListener('DOMContentLoaded', function() {
+            loadDataFromStorage();
+        });
+
+        // LocalStorage에서 데이터 로드
+        function loadDataFromStorage() {
+            try {
+                const saved = localStorage.getItem('fkfs-evaluations');
+                if (saved) {
+                    allDetections = JSON.parse(saved);
+                    console.log('✅ 로드됨:', allDetections);
+                }
+            } catch (e) {
+                console.error('❌ 로드 실패:', e);
+                allDetections = [];
+            }
+        }
+
+        // 탭 전환
+        function switchTab(event, tab) {
+            event.preventDefault();
+            document.querySelectorAll('.section-view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tab === 'dashboard') {
+                displayDashboard();
+            }
+        }
+
+        // 평가 시작
+        function startEvaluation() {
+            const now = new Date();
+            currentDetection.date = now.toLocaleDateString('ko-KR');
+            currentDetection.time = now.toLocaleTimeString('ko-KR');
+
+            document.getElementById('noise-box').style.display = 'block';
+            document.getElementById('process-header').classList.add('active');
+            document.getElementById('process-date').textContent = currentDetection.date;
+            document.getElementById('process-time').textContent = currentDetection.time;
+            
+            document.getElementById('process-header').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 평가자 선택
+        function selectEvaluator(btn, name) {
+            document.querySelectorAll('#evaluator-group .option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            currentDetection.name = name;
+            document.getElementById('evaluator-status').textContent = `선택: ${name}`;
+            document.getElementById('process-evaluator').textContent = name;
+        }
+
+        // 시나리오 선택
+        function selectScenario(btn, scenario) {
+            document.querySelectorAll('#scenario-group .option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            currentDetection.scenario = scenario;
+            document.getElementById('scenario-status').textContent = `선택: ${scenario}`;
+        }
+
+        // 주행 환경 토글
+        function toggleDriving(btn, driving) {
+            btn.classList.toggle('selected');
+            
+            if (btn.classList.contains('selected')) {
+                if (!currentDetection.drivings.includes(driving)) {
+                    currentDetection.drivings.push(driving);
+                }
+            } else {
+                currentDetection.drivings = currentDetection.drivings.filter(d => d !== driving);
+            }
+            
+            const display = currentDetection.drivings.length > 0 
+                ? `선택: ${currentDetection.drivings.join(', ')}`
+                : '선택: 없음';
+            document.getElementById('driving-status').textContent = display;
+        }
+
+        // 주변 차량 수 선택
+        function selectVehicleCount(btn, count) {
+            document.querySelectorAll('.vehicle-count-group .vehicle-count-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            currentDetection.vehicleCount = count;
+            const labels = ['', '없음', '적음', '보통', '많음', '매우 많음'];
+            document.getElementById('vehicle-count-status').textContent = `선택: ${labels[count]}`;
+        }
+
+        // 5단계 평가 선택
+        function selectRating(btn, category, rating) {
+            const parent = btn.parentElement;
+            parent.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            currentDetection[category] = rating;
+        }
+
+        // 변동성 심한 파라메터 토글 (최대 3개)
+        function toggleVolatileParam(btn, param) {
+            btn.classList.toggle('selected');
+            
+            if (btn.classList.contains('selected')) {
+                if (!currentDetection.volatileParams.includes(param)) {
+                    if (currentDetection.volatileParams.length >= 3) {
+                        alert('최대 3개까지만 선택할 수 있습니다.');
+                        btn.classList.remove('selected');
+                        return;
+                    }
+                    currentDetection.volatileParams.push(param);
+                }
+            } else {
+                currentDetection.volatileParams = currentDetection.volatileParams.filter(p => p !== param);
+            }
+            
+            const display = currentDetection.volatileParams.length > 0 
+                ? `선택: ${currentDetection.volatileParams.join(', ')}`
+                : '선택: 없음';
+            document.getElementById('volatile-params-status').textContent = display;
+        }
+
+        // 좌석 위치 선택
+        function selectSeat(btn, seat) {
+            document.querySelectorAll('#seat-group .option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            currentDetection.seat = seat;
+            document.getElementById('seat-status').textContent = `선택: ${seat}`;
+        }
+
+        // 소음 위치 토글
+        function toggleLocation(btn, location) {
+            btn.classList.toggle('selected');
+            
+            if (btn.classList.contains('selected')) {
+                if (!currentDetection.locations.includes(location)) {
+                    currentDetection.locations.push(location);
+                }
+            } else {
+                currentDetection.locations = currentDetection.locations.filter(l => l !== location);
+            }
+            
+            const display = currentDetection.locations.length > 0 
+                ? `선택: ${currentDetection.locations.join(', ')}`
+                : '선택: 없음';
+            document.getElementById('location-status').textContent = display;
+        }
+
+        // 평가 저장
+        function saveEvaluation() {
+            // 소음 인지 버튼을 누르지 않고 저장해도 날짜/시간이 반드시 들어가도록 보정
+            if (!currentDetection.date || !currentDetection.time) {
+                const now = new Date();
+                currentDetection.date = now.toLocaleDateString('ko-KR');
+                currentDetection.time = now.toLocaleTimeString('ko-KR');
+            }
+
+            // 모든 데이터 수집
+            currentDetection.drivingComment = document.getElementById('driving-comment').value;
+            currentDetection.loudnessComment = document.getElementById('loudness-comment').value;
+            currentDetection.timbreComment = document.getElementById('timbre-comment').value;
+            currentDetection.fluctuationComment = document.getElementById('fluctuation-comment').value;
+            currentDetection.annoyanceComment = document.getElementById('annoyance-comment').value;
+            currentDetection.windSpeed = parseFloat(document.getElementById('wind-speed').value);
+            currentDetection.windDirection = parseFloat(document.getElementById('wind-direction').value);
+            currentDetection.yawAngle = parseFloat(document.getElementById('yaw-angle').value);
+            currentDetection.temp = parseFloat(document.getElementById('temp').value);
+            currentDetection.humidity = parseFloat(document.getElementById('humidity').value);
+            currentDetection.pressure = parseFloat(document.getElementById('pressure').value);
+            currentDetection.envComment = document.getElementById('env-comment').value;
+            currentDetection.seatComment = document.getElementById('seat-comment').value;
+            currentDetection.locationComment = document.getElementById('location-comment').value;
+
+            // 깊은 복사
+            const record = JSON.parse(JSON.stringify(currentDetection));
+            allDetections.push(record);
+            
+            // LocalStorage 저장
+            localStorage.setItem('fkfs-evaluations', JSON.stringify(allDetections));
+            console.log('✅ 로컬 저장 완료:', allDetections);
+
+            // Google Sheets 저장
+            // Apps Script에서는 e.postData.contents를 JSON.parse()로 받으면 됩니다.
+            // mode: 'no-cors'를 사용하므로 응답 내용은 브라우저에서 확인하지 않고 전송만 수행합니다.
+            if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.includes('/exec')) {
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8'
+                    },
+                    body: JSON.stringify(record)
+                })
+                .then(() => {
+                    console.log('✅ Google Sheets 전송 요청 완료');
+                })
+                .catch((error) => {
+                    console.error('❌ Google Sheets 전송 실패:', error);
+                    alert('로컬에는 저장되었지만 Google Sheets 전송 중 오류가 발생했습니다.');
+                });
+            } else {
+                console.warn('⚠️ GOOGLE_SCRIPT_URL이 설정되지 않았거나 /exec URL이 아닙니다.');
+                alert('로컬에는 저장되었지만 GOOGLE_SCRIPT_URL이 설정되지 않아 Google Sheets에는 전송되지 않았습니다.');
+            }
+            
+            // 저장 후 초기화
+            alert(`✅ 소음 인지 #${allDetections.length} 저장되었습니다!`);
+            resetForm();
+        }
+
+        // 폼 초기화
+        function resetForm() {
+            currentDetection = {
+                name: null,
+                date: null,
+                time: null,
+                scenario: null,
+                drivings: [],
+                vehicleCount: null,
+                drivingComment: '',
+                loudness: null,
+                loudnessComment: '',
+                timbre: null,
+                timbreComment: '',
+                fluctuation: null,
+                fluctuationComment: '',
+                annoyance: null,
+                annoyanceComment: '',
+                windSpeed: null,
+                windDirection: null,
+                yawAngle: null,
+                temp: null,
+                humidity: null,
+                pressure: null,
+                volatileParams: [],
+                envComment: '',
+                seat: null,
+                seatComment: '',
+                locations: [],
+                locationComment: ''
+            };
+
+            document.querySelectorAll('.option-btn, .rating-btn, .multi-btn, .vehicle-count-btn, .volatile-param-btn').forEach(btn => btn.classList.remove('selected'));
+            document.querySelectorAll('.comment-input').forEach(input => input.value = '');
+            document.getElementById('evaluator-status').textContent = '선택: 없음';
+            document.getElementById('scenario-status').textContent = '선택: 없음';
+            document.getElementById('driving-status').textContent = '선택: 없음';
+            document.getElementById('vehicle-count-status').textContent = '선택: 없음';
+            document.getElementById('volatile-params-status').textContent = '선택: 없음';
+            document.getElementById('seat-status').textContent = '선택: 없음';
+            document.getElementById('location-status').textContent = '선택: 없음';
+
+            document.getElementById('wind-speed').value = '4.2';
+            document.getElementById('wind-direction').value = '45';
+            document.getElementById('yaw-angle').value = '90';
+            document.getElementById('temp').value = '22';
+            document.getElementById('humidity').value = '55';
+            document.getElementById('pressure').value = '1013';
+
+            document.getElementById('process-header').classList.remove('active');
+            document.getElementById('noise-box').style.display = 'none';
+        }
+
+        // 대시보드 표시
+        function displayDashboard() {
+            const statsContainer = document.getElementById('stats');
+            const listContainer = document.getElementById('evaluationsList');
+            const emptyState = document.getElementById('emptyState');
+            const summarySection = document.getElementById('summary-section');
+
+            if (allDetections.length === 0) {
+                statsContainer.innerHTML = '';
+                listContainer.innerHTML = '';
+                summarySection.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            summarySection.style.display = 'block';
+
+            const avgLoudness = (allDetections.reduce((sum, d) => sum + (d.loudness || 0), 0) / allDetections.length).toFixed(1);
+            const avgTimbre = (allDetections.reduce((sum, d) => sum + (d.timbre || 0), 0) / allDetections.length).toFixed(1);
+            const avgFluctuation = (allDetections.reduce((sum, d) => sum + (d.fluctuation || 0), 0) / allDetections.length).toFixed(1);
+            const avgAnnoyance = (allDetections.reduce((sum, d) => sum + (d.annoyance || 0), 0) / allDetections.length).toFixed(1);
+            const evaluators = new Set(allDetections.map(d => d.name)).size;
+
+            statsContainer.innerHTML = `
+                <div class="stat-card">
+                    <h3>${allDetections.length}</h3>
+                    <p>총 평가 건수</p>
+                </div>
+                <div class="stat-card secondary">
+                    <h3>${evaluators}</h3>
+                    <p>평가자 수</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${avgLoudness}</h3>
+                    <p>평균 음량</p>
+                </div>
+                <div class="stat-card danger">
+                    <h3>${avgAnnoyance}</h3>
+                    <p>평균 성가심</p>
+                </div>
+            `;
+
+            const summaryGrid = document.getElementById('summary-grid');
+            summaryGrid.innerHTML = `
+                <div class="summary-item">
+                    <div class="summary-label">🔊 평균 음량</div>
+                    <div class="summary-value">${avgLoudness} / 5.0</div>
+                    <div class="summary-desc">${avgLoudness < 2.5 ? '적음' : avgLoudness < 3.5 ? '중간' : '높음'}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">🎵 평균 음색</div>
+                    <div class="summary-value">${avgTimbre} / 5.0</div>
+                    <div class="summary-desc">${avgTimbre < 2.5 ? '부드러움' : avgTimbre < 3.5 ? '중간' : '거칠음'}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">📈 평균 변동성</div>
+                    <div class="summary-value">${avgFluctuation} / 5.0</div>
+                    <div class="summary-desc">${avgFluctuation < 2.5 ? '일정함' : avgFluctuation < 3.5 ? '중간' : '변동 많음'}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">😤 평균 성가심</div>
+                    <div class="summary-value">${avgAnnoyance} / 5.0</div>
+                    <div class="summary-desc">${avgAnnoyance < 2.5 ? '낮음' : avgAnnoyance < 3.5 ? '중간' : '높음'}</div>
+                </div>
+            `;
+
+            listContainer.innerHTML = allDetections.map((detection, index) => {
+                const vehicleCountLabels = ['', '없음', '적음', '보통', '많음', '매우 많음'];
+                const vehicleCountLabel = vehicleCountLabels[detection.vehicleCount] || '선택 안함';
+                return `
+                    <div class="detection-card">
+                        <button class="delete-btn" onclick="deleteDetection(${index})">×</button>
+                        <div class="detection-id">평가 #${index + 1}</div>
+                        <div class="detection-meta">
+                            <div class="detection-item">👤 ${detection.name}</div>
+                            <div class="detection-item">📅 ${detection.date}</div>
+                            <div class="detection-item">🕐 ${detection.time}</div>
+                        </div>
+                        
+                        <!-- 감지시점 환경 데이터 섹션 -->
+                        <div class="info-box">
+                            <div class="info-title">🌍 감지시점 환경 데이터</div>
+                            <div class="env-data-grid">
+                                <div class="env-data-item">
+                                    <div class="env-data-label">🌡️ 기온</div>
+                                    <div class="env-data-value">${detection.temp}°C</div>
+                                </div>
+                                <div class="env-data-item">
+                                    <div class="env-data-label">🌬️ 풍속</div>
+                                    <div class="env-data-value">${detection.windSpeed} m/s</div>
+                                </div>
+                                <div class="env-data-item">
+                                    <div class="env-data-label">💧 습도</div>
+                                    <div class="env-data-value">${detection.humidity}%</div>
+                                </div>
+                                <div class="env-data-item">
+                                    <div class="env-data-label">🧭 풍향</div>
+                                    <div class="env-data-value">${detection.windDirection}°</div>
+                                </div>
+                                <div class="env-data-item">
+                                    <div class="env-data-label">📐 측후각</div>
+                                    <div class="env-data-value">${detection.yawAngle}°</div>
+                                </div>
+                                <div class="env-data-item">
+                                    <div class="env-data-label">🔽 압력</div>
+                                    <div class="env-data-value">${detection.pressure} hPa</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 10px; padding: 8px; background: white; border-radius: 4px; border-left: 3px solid #0ea5e9;">
+                                <div style="font-size: 0.8em; color: #95a5a6; font-weight: 600; margin-bottom: 5px;">⚡ 변동성 심한 파라메터</div>
+                                <div style="font-size: 0.9em; font-weight: 600; color: #2c3e50;">${detection.volatileParams && detection.volatileParams.length > 0 ? detection.volatileParams.join(', ') : '없음'}</div>
+                            </div>
+                        </div>
+
+                        <div class="info-box">
+                            <div class="info-title">시나리오 & 환경</div>
+                            <div><strong>시나리오:</strong> ${detection.scenario}</div>
+                            <div style="margin-top: 5px;"><strong>환경:</strong> ${detection.drivings.join(', ') || '없음'}</div>
+                            <div style="margin-top: 5px;"><strong>🚗 주변 차량 수:</strong> ${vehicleCountLabel}</div>
+                        </div>
+                        
+                        <div style="background: #e0f2fe; padding: 12px; border-radius: 6px; border-left: 4px solid #0ea5e9; margin: 12px 0;">
+                            <div style="font-weight: 600; color: #0284c7; margin-bottom: 8px;">📊 평가 점수</div>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                                <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 0.75em; color: #95a5a6;">음량</div>
+                                    <div style="font-size: 1.3em; font-weight: 700; color: #2c3e50;">${detection.loudness}</div>
+                                </div>
+                                <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 0.75em; color: #95a5a6;">음색</div>
+                                    <div style="font-size: 1.3em; font-weight: 700; color: #2c3e50;">${detection.timbre}</div>
+                                </div>
+                                <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 0.75em; color: #95a5a6;">변동성</div>
+                                    <div style="font-size: 1.3em; font-weight: 700; color: #2c3e50;">${detection.fluctuation}</div>
+                                </div>
+                                <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                    <div style="font-size: 0.75em; color: #95a5a6;">성가심</div>
+                                    <div style="font-size: 1.3em; font-weight: 700; color: #2c3e50;">${detection.annoyance}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 항목 삭제
+        function deleteDetection(index) {
+            if (confirm(`평가 #${index + 1}을(를) 삭제하시겠습니까?`)) {
+                allDetections.splice(index, 1);
+                localStorage.setItem('fkfs-evaluations', JSON.stringify(allDetections));
+                console.log('✅ 삭제 완료:', allDetections);
+                displayDashboard();
+            }
+        }
+
+        // JSON 다운로드
+        function exportJSON() {
+            if (allDetections.length === 0) {
+                alert('다운로드할 기록이 없습니다.');
+                return;
+            }
+            const dataStr = JSON.stringify(allDetections, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `FKFS-evaluation-${new Date().getTime()}.json`;
+            link.click();
+        }
+
+        // CSV 다운로드 - 각 파라미터를 독립적 셀로 ✅
+        function exportCSV() {
+            if (allDetections.length === 0) {
+                alert('다운로드할 기록이 없습니다.');
+                return;
+            }
+            
+            // CSV 헤더
+            let csv = '시간,평가자,시나리오,주행환경1,주행환경2,주행환경3,주행환경4,주변차량수,음량,음색,변동성,성가심,풍속,풍향,측후각,기온,습도,압력,변동성심한파라메터1,변동성심한파라메터2,변동성심한파라메터3,좌석,소음위치1,소음위치2,소음위치3,소음위치4,소음위치5,소음위치6\n';
+            
+            const vehicleCountLabels = ['', '없음', '적음', '보통', '많음', '매우 많음'];
+            
+            // 데이터 행 추가
+            allDetections.forEach(d => {
+                const vehicleCountLabel = vehicleCountLabels[d.vehicleCount] || '선택 안함';
+                
+                // 주행환경을 최대 4개 셀로 분리
+                const drivings = d.drivings || [];
+                const driving1 = drivings[0] || '';
+                const driving2 = drivings[1] || '';
+                const driving3 = drivings[2] || '';
+                const driving4 = drivings[3] || '';
+                
+                // 변동성 심한 파라메터를 최대 3개 셀로 분리
+                const volatiles = d.volatileParams || [];
+                const volatile1 = volatiles[0] || '';
+                const volatile2 = volatiles[1] || '';
+                const volatile3 = volatiles[2] || '';
+                
+                // 소음위치를 최대 6개 셀로 분리
+                const locations = d.locations || [];
+                const location1 = locations[0] || '';
+                const location2 = locations[1] || '';
+                const location3 = locations[2] || '';
+                const location4 = locations[3] || '';
+                const location5 = locations[4] || '';
+                const location6 = locations[5] || '';
+                
+                // 각 값을 독립적인 셀로 배치
+                const row = [
+                    d.time || '',
+                    d.name || '',
+                    d.scenario || '',
+                    driving1,
+                    driving2,
+                    driving3,
+                    driving4,
+                    vehicleCountLabel,
+                    d.loudness || '',
+                    d.timbre || '',
+                    d.fluctuation || '',
+                    d.annoyance || '',
+                    d.windSpeed || '',
+                    d.windDirection || '',
+                    d.yawAngle || '',
+                    d.temp || '',
+                    d.humidity || '',
+                    d.pressure || '',
+                    volatile1,
+                    volatile2,
+                    volatile3,
+                    d.seat || '',
+                    location1,
+                    location2,
+                    location3,
+                    location4,
+                    location5,
+                    location6
+                ];
+                
+                csv += row.join(',') + '\n';
+            });
+            
+            // UTF-8 BOM 포함하여 Blob 생성
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csv], { 
+                type: 'text/csv;charset=utf-8;' 
+            });
+            
+            // 다운로드 링크 생성 및 클릭
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `FKFS-evaluation-${new Date().getTime()}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // 메모리 해제
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            
+            console.log('✅ CSV 다운로드 완료');
+        }
+    </script>
+
+</body>
+</html>
